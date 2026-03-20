@@ -35,9 +35,19 @@
         "read": {
           "type": "boolean",
           "description": "Whether the email has been read by the recipient."
+        },
+        "starredBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of user emails who have starred this email."
+        },
+        "deletedBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of user emails who have moved this email to trash."
         }
       },
-      "required": ["senderEmail", "senderName", "recipientEmail", "subject", "body", "createdAt", "read"]
+      "required": ["senderEmail", "senderName", "recipientEmail", "subject", "body", "createdAt", "read", "starredBy", "deletedBy"]
     },
     "User": {
       "title": "User",
@@ -65,6 +75,11 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the user was created."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"],
+          "description": "The role of the user (admin or user)."
         }
       },
       "required": ["displayName", "email", "dob", "createdAt"]

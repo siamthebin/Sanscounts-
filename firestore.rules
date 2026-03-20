@@ -69,19 +69,26 @@ service cloud.firestore {
     //   - createdAt: string
     // ===============================================================
 
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sloudsan@gmail.com" && request.auth.token.email_verified == true));
+    }
+
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['displayName', 'email', 'dob', 'photoURL', 'createdAt']) &&
+      return hasOnlyAllowedFields(['displayName', 'email', 'dob', 'photoURL', 'createdAt', 'role']) &&
              data.displayName is string && data.displayName.size() <= 100 &&
              isValidEmail(data.email) &&
              data.dob is string && data.dob.size() <= 20 &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-             data.createdAt is string;
+             data.createdAt is string &&
+             (!('role' in data) || (data.role in ['admin', 'user']));
     }
 
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
-      allow update: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data) && (isAdmin() || (request.resource.data.role == resource.data.role));
     }
 
     match /emails/{emailId} {
@@ -98,8 +105,12 @@ service cloud.firestore {
 
       // A user can update an email if they are the sender or recipient
       allow update: if isAuthenticated() && (
-        resource.data.senderEmail == request.auth.token.email ||
-        resource.data.recipientEmail == request.auth.token.email
+        (resource.data.senderEmail == request.auth.token.email || resource.data.recipientEmail == request.auth.token.email)
+      ) && isValidEmailMessage(request.resource.data) && (
+        // Only allow updating read status, starredBy, and deletedBy
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'starredBy', 'deletedBy']) &&
+        // If recipient, they can update read status. If sender, they shouldn't be able to change read status for recipient.
+        (resource.data.recipientEmail == request.auth.token.email || request.resource.data.read == resource.data.read)
       );
 
       // A user can delete an email if they are the sender or recipient
@@ -109,21 +120,16 @@ service cloud.firestore {
       );
     }
 
-    // OAuth persistent storage rules
-    match /oauth_codes/{code} {
-      allow read, write: if true; // In a real app, restrict this to server-side only
-    }
-    
-    match /oauth_tokens/{token} {
-      allow read, write: if true; // In a real app, restrict this to server-side only
-    }
-
     match /developer_apps/{appId} {
-      allow read, write: if isAuthenticated() && (resource == null || resource.data.developerId == request.auth.uid);
+      allow read: if isAuthenticated() && (resource.data.developerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.developerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.developerId == request.auth.uid || isAdmin());
     }
 
     match /developer_domains/{domainId} {
-      allow read, write: if isAuthenticated() && (resource == null || resource.data.developerId == request.auth.uid);
+      allow read: if isAuthenticated() && (resource.data.developerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.developerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.developerId == request.auth.uid || isAdmin());
     }
 
     function isValidVerificationCode(data) {
