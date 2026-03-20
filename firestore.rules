@@ -1,0 +1,152 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: emails
+    // Document ID: auto-generated
+    // Fields:
+    //   - senderEmail: string (required) - The email address of the sender.
+    //   - senderName: string (required) - The display name of the sender.
+    //   - recipientEmail: string (required) - The email address of the recipient.
+    //   - subject: string (required) - The subject of the email.
+    //   - body: string (required) - The body content of the email.
+    //   - createdAt: timestamp (required) - The timestamp when the email was sent.
+    //   - read: boolean (required) - Whether the email has been read by the recipient.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidEmailMessage(data) {
+      return hasOnlyAllowedFields(['senderEmail', 'senderName', 'recipientEmail', 'subject', 'body', 'createdAt', 'read', 'starredBy', 'deletedBy']) &&
+             hasRequiredFields(['senderEmail', 'senderName', 'recipientEmail', 'subject', 'body', 'createdAt', 'read', 'starredBy', 'deletedBy']) &&
+             isValidEmail(data.senderEmail) &&
+             data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 100 &&
+             isValidEmail(data.recipientEmail) &&
+             data.subject is string && data.subject.size() <= 200 &&
+             data.body is string && data.body.size() <= 100000 &&
+             data.createdAt is timestamp &&
+             data.read is bool &&
+             data.starredBy is list &&
+             data.deletedBy is list;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // ===============================================================
+    // Collection: users
+    // Document ID: user UID
+    // Fields:
+    //   - displayName: string
+    //   - email: string
+    //   - dob: string
+    //   - photoURL: string (optional)
+    //   - createdAt: string
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['displayName', 'email', 'dob', 'photoURL', 'createdAt']) &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             isValidEmail(data.email) &&
+             data.dob is string && data.dob.size() <= 20 &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+             data.createdAt is string;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
+    }
+
+    match /emails/{emailId} {
+      // A user can read an email if they are the sender or the recipient
+      allow read: if isAuthenticated() && (
+        resource.data.senderEmail == request.auth.token.email ||
+        resource.data.recipientEmail == request.auth.token.email
+      );
+
+      // A user can send an email if they are authenticated and the senderEmail matches their auth token email
+      allow create: if isAuthenticated() &&
+                    isValidEmailMessage(request.resource.data) &&
+                    request.resource.data.senderEmail == request.auth.token.email;
+
+      // A user can update an email if they are the sender or recipient
+      allow update: if isAuthenticated() && (
+        resource.data.senderEmail == request.auth.token.email ||
+        resource.data.recipientEmail == request.auth.token.email
+      );
+
+      // A user can delete an email if they are the sender or recipient
+      allow delete: if isAuthenticated() && (
+        resource.data.senderEmail == request.auth.token.email ||
+        resource.data.recipientEmail == request.auth.token.email
+      );
+    }
+
+    // OAuth persistent storage rules
+    match /oauth_codes/{code} {
+      allow read, write: if true; // In a real app, restrict this to server-side only
+    }
+    
+    match /oauth_tokens/{token} {
+      allow read, write: if true; // In a real app, restrict this to server-side only
+    }
+
+    match /developer_apps/{appId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.developerId == request.auth.uid);
+    }
+
+    match /developer_domains/{domainId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.developerId == request.auth.uid);
+    }
+
+    function isValidVerificationCode(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'code', 'type', 'status', 'createdAt', 'expiresAt']) &&
+             hasRequiredFields(['email', 'code', 'type', 'status', 'createdAt', 'expiresAt']) &&
+             isValidEmail(data.email) &&
+             data.code is string && data.code.size() == 6 &&
+             data.type in ['password_reset', 'login_verify'] &&
+             data.status in ['pending', 'used', 'expired'] &&
+             data.createdAt is timestamp &&
+             data.expiresAt is timestamp;
+    }
+
+    match /verification_codes/{codeId} {
+      // Allow read if the email matches the user's email or uid
+      allow read: if (isAuthenticated() && (resource.data.email == request.auth.token.email || resource.data.uid == request.auth.uid)) || 
+                  (!isAuthenticated() && resource.data.status == 'pending'); // Allow unauthenticated read for verification
+      
+      // Allow create for password reset (even if not authenticated)
+      allow create: if isValidVerificationCode(request.resource.data);
+      
+      // Allow update to mark as used
+      allow update: if isValidVerificationCode(request.resource.data);
+    }
+  }
+}

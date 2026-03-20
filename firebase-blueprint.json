@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "Email": {
+      "title": "Email",
+      "description": "An email message sent between users.",
+      "type": "object",
+      "properties": {
+        "senderEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the sender."
+        },
+        "senderName": {
+          "type": "string",
+          "description": "The display name of the sender."
+        },
+        "recipientEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the recipient."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the email."
+        },
+        "body": {
+          "type": "string",
+          "description": "The body content of the email."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the email was sent."
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether the email has been read by the recipient."
+        }
+      },
+      "required": ["senderEmail", "senderName", "recipientEmail", "subject", "body", "createdAt", "read"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the user."
+        },
+        "dob": {
+          "type": "string",
+          "description": "The date of birth of the user."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "The URL of the user's profile picture."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user was created."
+        }
+      },
+      "required": ["displayName", "email", "dob", "createdAt"]
+    },
+    "DeveloperApp": {
+      "title": "DeveloperApp",
+      "description": "OAuth application registered by a developer.",
+      "type": "object",
+      "properties": {
+        "developerId": { "type": "string" },
+        "appName": { "type": "string" },
+        "appUrl": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientSecret": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "paymentStatus": { "type": "string" }
+      },
+      "required": ["developerId", "appName", "appUrl", "clientId", "clientSecret", "createdAt"]
+    },
+    "DeveloperDomain": {
+      "title": "DeveloperDomain",
+      "description": "Domain registered by a developer for verification.",
+      "type": "object",
+      "properties": {
+        "developerId": { "type": "string" },
+        "domain": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["developerId", "domain", "status", "createdAt"]
+    },
+    "VerificationCode": {
+      "title": "VerificationCode",
+      "description": "OTP codes generated for security verification via Sansteo.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["password_reset", "login_verify"] },
+        "status": { "type": "string", "enum": ["pending", "used", "expired"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "code", "type", "status", "createdAt", "expiresAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profile information."
+    },
+    "/emails/{emailId}": {
+      "schema": {
+        "$ref": "#/entities/Email"
+      },
+      "description": "Stores all email messages."
+    },
+    "/developer_apps/{appId}": {
+      "schema": {
+        "$ref": "#/entities/DeveloperApp"
+      },
+      "description": "Stores developer applications."
+    },
+    "/developer_domains/{domainId}": {
+      "schema": {
+        "$ref": "#/entities/DeveloperDomain"
+      },
+      "description": "Stores developer domains."
+    },
+    "/verification_codes/{codeId}": {
+      "schema": {
+        "$ref": "#/entities/VerificationCode"
+      },
+      "description": "Stores OTP codes for Sansteo integration."
+    }
+  }
+}

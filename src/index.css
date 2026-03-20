@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sky-50: #f0f8ff;
+  --color-sky-100: #e1f1fe;
+  --color-sky-200: #bae3fd;
+  --color-sky-300: #7ccbfb;
+  --color-sky-400: #36b0f9;
+  --color-sky-500: #1da1f2;
+  --color-sky-600: #0d8ce0;
+  --color-sky-700: #0b70b5;
+  --color-sky-800: #0d5f96;
+  --color-sky-900: #0f4f7a;
+  --color-sky-950: #0a3250;
+}
+
+html, body, #root {
+  background-color: #000000;
+  color: #ffffff;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Safe area padding for notched phones */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
