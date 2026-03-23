@@ -278,6 +278,30 @@ async function startServer() {
   // 4. UserInfo Endpoint (called by third-party backend with access token)
   app.get("/oauth/userinfo", async (req, res) => {
     const authHeader = req.headers.authorization;
+    const code = req.query.code as string;
+
+    // Support fetching with code (for demo client convenience)
+    if (code) {
+      try {
+        const authDoc = await getDoc(doc(db, "oauth_codes", code));
+        if (!authDoc.exists()) {
+          return res.status(401).json({ error: "invalid_code" });
+        }
+        const authData = authDoc.data();
+        if (authData.expiresAt < Date.now()) {
+          return res.status(401).json({ error: "code_expired" });
+        }
+        return res.json({
+          userId: authData.userId,
+          email: authData.email,
+          name: authData.name
+        });
+      } catch (error) {
+        console.error("Error fetching user info with code:", error);
+        return res.status(500).json({ error: "internal_error" });
+      }
+    }
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ error: "invalid_token" });
     }

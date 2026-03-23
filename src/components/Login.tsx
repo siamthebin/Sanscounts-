@@ -172,18 +172,22 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
       // Note: AuthContext's onAuthStateChanged will handle the state update
     } catch (err: any) {
       console.error("Login: Sign in error:", err);
-      if (err.code === 'auth/user-not-found') {
-        setError('No account found with this username or email.');
-      } else if (err.code === 'auth/wrong-password') {
-        setError('Incorrect password. Please try again.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Invalid email format.');
-      } else if (err.message === 'Password is required') {
-        setError('Please enter your password.');
-      } else {
-        setError('Invalid password or account not found.');
-      }
       setLoading(false);
+      
+      let message = 'লগইন করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        message = 'ইউজার নেম অথবা পাসওয়ার্ড ভুল। দয়া করে সঠিক তথ্য দিন।';
+      } else if (err.code === 'auth/invalid-email') {
+        message = 'ইমেইল ফরম্যাট সঠিক নয়।';
+      } else if (err.code === 'auth/too-many-requests') {
+        message = 'অতিরিক্ত চেষ্টার কারণে আপনার অ্যাকাউন্টটি সাময়িকভাবে লক করা হয়েছে। পরে আবার চেষ্টা করুন।';
+      } else if (err.code === 'auth/network-request-failed') {
+        message = 'ইন্টারনেট সংযোগে সমস্যা হচ্ছে। আপনার কানেকশন চেক করুন।';
+      } else if (err.message) {
+        message = err.message;
+      }
+      
+      setError(message);
     }
   };
 
