@@ -161,7 +161,16 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
       const email = username.includes('@') ? username : `${username.trim().toLowerCase()}@sanscounts.com`;
       await signInWithEmail(email, password);
     } catch (err: any) {
-      setError('Invalid password.');
+      console.error("Login error:", err);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found with this username or email.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password. Please try again.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email format.');
+      } else {
+        setError('Invalid password or account not found.');
+      }
       setLoading(false);
     }
   };

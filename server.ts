@@ -32,6 +32,7 @@ const clients = [
 ];
 
 async function startServer() {
+  console.log("Starting server initialization...");
   const app = express();
   const PORT = 3000;
 
@@ -39,6 +40,7 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  console.log("Setting up API routes...");
   // API routes FIRST
   
   // OTP Endpoints
@@ -92,12 +94,32 @@ async function startServer() {
   });
 
   // 1. Endpoint to verify client details (used by the frontend consent screen)
-  app.get("/api/oauth/client", (req, res) => {
+  app.get("/api/oauth/client", async (req, res) => {
     const { client_id } = req.query;
+    
+    // Check hardcoded clients first
     let client = clients.find(c => c.clientId === client_id);
     
+    if (!client) {
+      try {
+        const q = query(collection(db, "developer_apps"), where("clientId", "==", client_id));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const appData = snapshot.docs[0].data();
+          client = {
+            clientId: appData.clientId,
+            clientSecret: appData.clientSecret,
+            redirectUris: [], // We don't strictly validate redirect URIs in this prototype
+            name: appData.name
+          };
+        }
+      } catch (error) {
+        console.error("Error fetching client from Firestore:", error);
+      }
+    }
+
     // Auto-accept any client id for easy prototyping (e.g. sansnsea-client-id)
-    if (!client && typeof client_id === 'string') {
+    if (!client && typeof client_id === 'string' && client_id.includes('-client-id')) {
       const name = client_id.replace('-client-id', '');
       client = {
         clientId: client_id,
@@ -120,8 +142,26 @@ async function startServer() {
     // Basic validation
     let client = clients.find(c => c.clientId === client_id);
     
+    if (!client) {
+      try {
+        const q = query(collection(db, "developer_apps"), where("clientId", "==", client_id));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const appData = snapshot.docs[0].data();
+          client = {
+            clientId: appData.clientId,
+            clientSecret: appData.clientSecret,
+            redirectUris: [],
+            name: appData.name
+          };
+        }
+      } catch (error) {
+        console.error("Error fetching client from Firestore:", error);
+      }
+    }
+
     // Auto-accept any client id for easy prototyping
-    if (!client && typeof client_id === 'string') {
+    if (!client && typeof client_id === 'string' && client_id.includes('-client-id')) {
       const clientName = client_id.replace('-client-id', '');
       client = {
         clientId: client_id,
@@ -162,7 +202,24 @@ async function startServer() {
     }
 
     const client = clients.find(c => c.clientId === client_id && c.clientSecret === client_secret);
-    if (!client) {
+    let validClient = !!client;
+
+    if (!validClient) {
+      try {
+        const q = query(collection(db, "developer_apps"), 
+          where("clientId", "==", client_id),
+          where("clientSecret", "==", client_secret)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          validClient = true;
+        }
+      } catch (error) {
+        console.error("Error validating client from Firestore:", error);
+      }
+    }
+
+    if (!validClient) {
       return res.status(401).json({ error: "invalid_client" });
     }
 
@@ -231,6 +288,7 @@ async function startServer() {
     }
   });
 
+  console.log("Initializing Vite middleware...");
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -271,8 +329,12 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    console.log("Application is ready to receive requests.");
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});
