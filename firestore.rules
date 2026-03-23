@@ -132,6 +132,14 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && (resource.data.developerId == request.auth.uid || isAdmin());
     }
 
+    match /oauth_codes/{codeId} {
+      allow read, write: if true; // Ideally restricted to server-side
+    }
+
+    match /oauth_tokens/{tokenId} {
+      allow read, write: if true; // Ideally restricted to server-side
+    }
+
     function isValidVerificationCode(data) {
       return hasOnlyAllowedFields(['uid', 'email', 'code', 'type', 'status', 'createdAt', 'expiresAt']) &&
              hasRequiredFields(['email', 'code', 'type', 'status', 'createdAt', 'expiresAt']) &&

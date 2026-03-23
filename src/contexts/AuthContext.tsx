@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db, logout, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '../services/firebase';
+import { auth, db, logout, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, handleFirestoreError, OperationType } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -24,9 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserData(userDoc.data());
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
         }
       } else {
         setUserData(null);
@@ -42,12 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updateProfile(userCredential.user, { displayName });
     
     // Store extra data in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      displayName,
-      email,
-      dob: dob || '',
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        displayName,
+        email,
+        dob: dob || '',
+        createdAt: new Date().toISOString(),
+        role: 'user'
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${userCredential.user.uid}`);
+    }
 
     setUser({ ...userCredential.user, displayName } as User);
     setUserData({ displayName, email, dob: dob || '' });
@@ -78,8 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.displayName) firestoreUpdates.displayName = data.displayName;
       if (data.photoURL) firestoreUpdates.photoURL = data.photoURL;
       
-      await updateDoc(doc(db, 'users', user.uid), firestoreUpdates);
-      setUserData((prev: any) => ({ ...prev, ...firestoreUpdates }));
+      try {
+        await updateDoc(doc(db, 'users', user.uid), firestoreUpdates);
+        setUserData((prev: any) => ({ ...prev, ...firestoreUpdates }));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+      }
     }
 
     setUser({ ...auth.currentUser } as User);

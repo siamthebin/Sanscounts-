@@ -13,6 +13,7 @@ import { DeveloperPortal } from './components/DeveloperPortal';
 import { DeveloperDashboard } from './components/DeveloperDashboard';
 import { Sansteo } from './components/Sansteo';
 import { useEmails } from './hooks/useEmails';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function MailApp() {
   const { user } = useAuth();
@@ -194,10 +195,11 @@ function MailApp() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MailApp />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<MailApp />} />
           <Route path="/oauth/authorize" element={<Authorize />} />
           <Route path="/demo-client" element={<DemoClient />} />
           <Route path="/developers" element={<DeveloperPortal />} />
@@ -205,5 +207,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }

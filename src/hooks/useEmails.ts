@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy, addDoc, updateDoc, doc, serverTimestamp, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, handleFirestoreError, OperationType } from '../services/firebase';
 import { Email, Folder } from '../types';
 
 export function useEmails(userEmail: string | null | undefined) {
@@ -49,6 +49,8 @@ export function useEmails(userEmail: string | null | undefined) {
         });
       });
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'emails');
     });
 
     const unsubscribeSent = onSnapshot(sentQuery, (snapshot) => {
@@ -63,6 +65,8 @@ export function useEmails(userEmail: string | null | undefined) {
           return timeB - timeA;
         });
       });
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'emails');
     });
 
     return () => {
@@ -73,49 +77,73 @@ export function useEmails(userEmail: string | null | undefined) {
 
   const sendEmail = async (recipientEmail: string, subject: string, body: string, senderName: string) => {
     if (!userEmail) return;
-    await addDoc(collection(db, 'emails'), {
-      senderEmail: userEmail.toLowerCase(),
-      senderName,
-      recipientEmail: recipientEmail.toLowerCase(),
-      subject,
-      body,
-      createdAt: serverTimestamp(),
-      read: false,
-      starredBy: [],
-      deletedBy: []
-    });
+    try {
+      await addDoc(collection(db, 'emails'), {
+        senderEmail: userEmail.toLowerCase(),
+        senderName,
+        recipientEmail: recipientEmail.toLowerCase(),
+        subject,
+        body,
+        createdAt: serverTimestamp(),
+        read: false,
+        starredBy: [],
+        deletedBy: []
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'emails');
+    }
   };
 
   const markAsRead = async (emailId: string) => {
-    await updateDoc(doc(db, 'emails', emailId), {
-      read: true
-    });
+    try {
+      await updateDoc(doc(db, 'emails', emailId), {
+        read: true
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `emails/${emailId}`);
+    }
   };
 
   const toggleStar = async (emailId: string, isStarred: boolean) => {
     if (!userEmail) return;
-    await updateDoc(doc(db, 'emails', emailId), {
-      starredBy: isStarred ? arrayRemove(userEmail) : arrayUnion(userEmail)
-    });
+    try {
+      await updateDoc(doc(db, 'emails', emailId), {
+        starredBy: isStarred ? arrayRemove(userEmail) : arrayUnion(userEmail)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `emails/${emailId}`);
+    }
   };
 
   const moveToTrash = async (emailId: string) => {
     if (!userEmail) return;
-    await updateDoc(doc(db, 'emails', emailId), {
-      deletedBy: arrayUnion(userEmail)
-    });
+    try {
+      await updateDoc(doc(db, 'emails', emailId), {
+        deletedBy: arrayUnion(userEmail)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `emails/${emailId}`);
+    }
   };
 
   const restoreFromTrash = async (emailId: string) => {
     if (!userEmail) return;
-    await updateDoc(doc(db, 'emails', emailId), {
-      deletedBy: arrayRemove(userEmail)
-    });
+    try {
+      await updateDoc(doc(db, 'emails', emailId), {
+        deletedBy: arrayRemove(userEmail)
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `emails/${emailId}`);
+    }
   };
 
   const deletePermanently = async (emailId: string) => {
     if (!userEmail) return;
-    await deleteDoc(doc(db, 'emails', emailId));
+    try {
+      await deleteDoc(doc(db, 'emails', emailId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `emails/${emailId}`);
+    }
   };
 
   return { emails, loading, sendEmail, markAsRead, toggleStar, moveToTrash, restoreFromTrash, deletePermanently };

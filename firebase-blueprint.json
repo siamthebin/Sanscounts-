@@ -125,6 +125,33 @@
         "expiresAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "code", "type", "status", "createdAt", "expiresAt"]
+    },
+    "OAuthCode": {
+      "title": "OAuthCode",
+      "description": "Temporary authorization codes for OAuth flow.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "redirectUri": { "type": "string" },
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "expiresAt": { "type": "number" }
+      },
+      "required": ["clientId", "userId", "expiresAt"]
+    },
+    "OAuthToken": {
+      "title": "OAuthToken",
+      "description": "Access tokens for OAuth flow.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "clientId": { "type": "string" },
+        "expiresAt": { "type": "number" }
+      },
+      "required": ["userId", "clientId", "expiresAt"]
     }
   },
   "firestore": {
@@ -157,6 +184,18 @@
         "$ref": "#/entities/VerificationCode"
       },
       "description": "Stores OTP codes for Sansteo integration."
+    },
+    "/oauth_codes/{codeId}": {
+      "schema": {
+        "$ref": "#/entities/OAuthCode"
+      },
+      "description": "Stores temporary OAuth codes."
+    },
+    "/oauth_tokens/{tokenId}": {
+      "schema": {
+        "$ref": "#/entities/OAuthToken"
+      },
+      "description": "Stores OAuth access tokens."
     }
   }
 }

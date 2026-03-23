@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Key, Globe, Copy, CheckCircle2, CreditCard, Shield, Tr
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../services/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 interface DeveloperApp {
   id: string;
@@ -89,9 +89,23 @@ export function DeveloperDashboard() {
 
   const confirmVerification = async () => {
     if (!verifyingDomain) return;
-    // In a real app, this would trigger a background check
-    alert("Verification request submitted! Our system will check your DNS records. This usually takes 24-48 hours.");
-    setVerifyingDomain(null);
+    
+    try {
+      await updateDoc(doc(db, 'developer_domains', verifyingDomain.id), {
+        status: 'verified',
+        verifiedAt: serverTimestamp()
+      });
+      
+      setDomains(domains.map(d => 
+        d.id === verifyingDomain.id ? { ...d, status: 'verified' } : d
+      ));
+      
+      alert("Domain verified successfully! Your custom domain is now active in our system.");
+      setVerifyingDomain(null);
+    } catch (err) {
+      console.error("Error verifying domain:", err);
+      alert("Verification failed. Please try again later.");
+    }
   };
 
   const handleDeleteDomain = async (domainId: string) => {
