@@ -311,12 +311,22 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
       {/* Right side - Login Form */}
       <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-24 py-12 relative">
         <div className="w-full max-w-md mx-auto lg:mx-0">
-          <div className="lg:hidden mb-12">
-            <SanscountsLogo size={48} className="text-sky-500" />
-          </div>
-
           {view === 'main' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex justify-between items-center mb-12">
+                <div className="lg:hidden">
+                  <SanscountsLogo size={48} className="text-sky-500" />
+                </div>
+                <button 
+                  onClick={() => {
+                    console.log("Login: Header Sign In clicked");
+                    setView('login-username');
+                  }}
+                  className="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer active:scale-95"
+                >
+                  Sign In
+                </button>
+              </div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-zinc-100 tracking-tight mb-12">
                 Sanscounts
               </h1>
@@ -324,7 +334,14 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
                 One account for all<br />Sans Services.
               </h2>
               <div className="space-y-4">
-                <button onClick={() => { setError(''); setView('signup-first-name'); }} className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-transparent rounded-full shadow-sm text-base font-bold text-black bg-white hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 focus:ring-offset-black transition-colors">
+                <button 
+                  onClick={() => { 
+                    console.log("Login: Create account clicked");
+                    setError(''); 
+                    setView('signup-first-name'); 
+                  }} 
+                  className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-transparent rounded-full shadow-sm text-base font-bold text-black bg-white hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 focus:ring-offset-black transition-colors cursor-pointer active:scale-95"
+                >
                   Create account
                 </button>
                 <div className="w-full sm:w-[300px] flex items-center my-4">
@@ -332,7 +349,14 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
                   <span className="flex-shrink-0 mx-4 text-zinc-500 text-sm">or</span>
                   <div className="flex-grow border-t border-zinc-800"></div>
                 </div>
-                <button onClick={() => { setError(''); setView('login-username'); }} className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-zinc-700 rounded-full shadow-sm text-base font-bold text-sky-500 hover:bg-sky-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-black transition-colors">
+                <button 
+                  onClick={() => { 
+                    console.log("Login: Sign in clicked");
+                    setError(''); 
+                    setView('login-username'); 
+                  }} 
+                  className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-zinc-700 rounded-full shadow-sm text-base font-bold text-sky-500 hover:bg-sky-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-black transition-colors cursor-pointer active:scale-95"
+                >
                   Sign in
                 </button>
                 <p className="w-full sm:w-[300px] mt-4 text-xs text-zinc-500 leading-relaxed">

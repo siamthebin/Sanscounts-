@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User as UserIcon, LogOut, ArrowRight, Code } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export function DemoClient() {
   const [userData, setUserData] = useState<any>(null);
@@ -8,32 +8,69 @@ export function DemoClient() {
   const [loading, setLoading] = useState(false);
   const [testApp, setTestApp] = useState('sansncar');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle redirect code on mount
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    
+    if (code) {
+      console.log("DemoClient: Found code in URL, fetching user info...");
+      setLoading(true);
+      
+      // In a real app, you would exchange the code for a token on your server
+      // For this demo, we'll call our userinfo endpoint directly with the code
+      fetch(`/oauth/userinfo?code=${code}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          console.log("DemoClient: User info fetched via redirect:", data);
+          setUserData(data);
+          setLoading(false);
+          // Clean up URL
+          navigate('/demo-client', { replace: true });
+        })
+        .catch(err => {
+          console.error("DemoClient: Error fetching user info:", err);
+          setError("লগইন তথ্য আনতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
+          setLoading(false);
+          navigate('/demo-client', { replace: true });
+        });
+    }
+  }, [location, navigate]);
 
   const handleLogin = () => {
     console.log("DemoClient: handleLogin triggered");
-    alert("Sign in with Sanscounts button clicked! Opening popup...");
     setError(null);
     setLoading(true);
     
     const clientId = `${testApp}-client-id`;
     const redirectUri = encodeURIComponent(`${window.location.origin}/demo-client`);
-    
-    // Open the Sanscounts authorization popup
     const authUrl = `/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;
+
+    // Detect if we are in standalone mode (PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+
+    if (isStandalone) {
+      console.log("DemoClient: Standalone mode detected, using redirect flow");
+      window.location.href = authUrl;
+      return;
+    }
+
+    // Otherwise use popup flow for better UX in browser
     console.log("DemoClient: Opening popup with URL:", authUrl);
     const popup = window.open(authUrl, 'SanscountsLogin', 'width=500,height=700');
 
     if (!popup) {
-      console.error("DemoClient: Popup blocked");
-      setError("পপআপ ব্লক করা হয়েছে! দয়া করে ব্রাউজারের পপআপ অ্যালাউ করুন।");
-      setLoading(false);
+      console.log("DemoClient: Popup blocked, falling back to redirect");
+      window.location.href = authUrl;
       return;
     }
 
     const messageListener = (event: MessageEvent) => {
-      console.log("DemoClient: Received message event:", event.data);
       if (event.data?.type === 'SANSCOUNTS_AUTH_SUCCESS') {
-        console.log("DemoClient: Auth success received, payload:", event.data.payload);
+        console.log("DemoClient: Auth success received via postMessage");
         window.removeEventListener('message', messageListener);
         setUserData(event.data.payload);
         setLoading(false);
@@ -42,10 +79,8 @@ export function DemoClient() {
 
     window.addEventListener('message', messageListener);
 
-    // Handle popup closed by user manually
     const checkPopup = setInterval(() => {
       if (popup.closed) {
-        console.log("DemoClient: Popup closed by user");
         clearInterval(checkPopup);
         setLoading(false);
         window.removeEventListener('message', messageListener);
