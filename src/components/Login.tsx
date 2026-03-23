@@ -155,19 +155,31 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Login: handleLogin triggered");
     setLoading(true);
     setError('');
     try {
       const email = username.includes('@') ? username : `${username.trim().toLowerCase()}@sanscounts.com`;
+      console.log("Login: Attempting sign in for:", email);
+      
+      if (!password) {
+        throw new Error('Password is required');
+      }
+
       await signInWithEmail(email, password);
+      console.log("Login: Sign in successful for:", email);
+      setLoading(false);
+      // Note: AuthContext's onAuthStateChanged will handle the state update
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Login: Sign in error:", err);
       if (err.code === 'auth/user-not-found') {
         setError('No account found with this username or email.');
       } else if (err.code === 'auth/wrong-password') {
         setError('Incorrect password. Please try again.');
       } else if (err.code === 'auth/invalid-email') {
         setError('Invalid email format.');
+      } else if (err.message === 'Password is required') {
+        setError('Please enter your password.');
       } else {
         setError('Invalid password or account not found.');
       }

@@ -10,6 +10,8 @@ export function DemoClient() {
   const navigate = useNavigate();
 
   const handleLogin = () => {
+    console.log("DemoClient: handleLogin triggered");
+    alert("Sign in with Sanscounts button clicked! Opening popup...");
     setError(null);
     setLoading(true);
     
@@ -18,16 +20,20 @@ export function DemoClient() {
     
     // Open the Sanscounts authorization popup
     const authUrl = `/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;
+    console.log("DemoClient: Opening popup with URL:", authUrl);
     const popup = window.open(authUrl, 'SanscountsLogin', 'width=500,height=700');
 
     if (!popup) {
+      console.error("DemoClient: Popup blocked");
       setError("পপআপ ব্লক করা হয়েছে! দয়া করে ব্রাউজারের পপআপ অ্যালাউ করুন।");
       setLoading(false);
       return;
     }
 
     const messageListener = (event: MessageEvent) => {
+      console.log("DemoClient: Received message event:", event.data);
       if (event.data?.type === 'SANSCOUNTS_AUTH_SUCCESS') {
+        console.log("DemoClient: Auth success received, payload:", event.data.payload);
         window.removeEventListener('message', messageListener);
         setUserData(event.data.payload);
         setLoading(false);
@@ -39,6 +45,7 @@ export function DemoClient() {
     // Handle popup closed by user manually
     const checkPopup = setInterval(() => {
       if (popup.closed) {
+        console.log("DemoClient: Popup closed by user");
         clearInterval(checkPopup);
         setLoading(false);
         window.removeEventListener('message', messageListener);

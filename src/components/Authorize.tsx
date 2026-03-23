@@ -20,7 +20,9 @@ export function Authorize() {
 
   useEffect(() => {
     const fetchClient = async () => {
+      console.log("Authorize: fetchClient triggered for clientId:", clientId);
       if (!clientId || !redirectUri || responseType !== 'code') {
+        console.error("Authorize: Invalid parameters:", { clientId, redirectUri, responseType });
         setError('Invalid authorization request. Missing or invalid parameters.');
         setLoading(false);
         return;
@@ -29,11 +31,14 @@ export function Authorize() {
       try {
         const res = await fetch(`/api/oauth/client?client_id=${clientId}`);
         if (!res.ok) {
+          console.error("Authorize: Client fetch failed with status:", res.status);
           throw new Error('Client not found');
         }
         const data = await res.json();
+        console.log("Authorize: Client fetched successfully:", data.name);
         setClientName(data.name);
       } catch (err) {
+        console.error("Authorize: Error fetching client:", err);
         setError('Invalid or unregistered client application.');
       } finally {
         setLoading(false);
@@ -50,8 +55,10 @@ export function Authorize() {
   }
 
   const handleAllow = async () => {
+    console.log("Authorize: handleAllow triggered");
     setAuthorizing(true);
     try {
+      console.log("Authorize: Requesting authorization code for user:", user.uid);
       const res = await fetch('/api/oauth/authorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,13 +72,17 @@ export function Authorize() {
       });
 
       if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Authorize: API error:", errorData);
         throw new Error('Failed to generate authorization code');
       }
 
       const data = await res.json();
+      console.log("Authorize: Received auth code:", data.code);
       
       // Easy Mode: If opened in a popup, send data directly via postMessage and close
       if (window.opener) {
+        console.log("Authorize: Sending postMessage to opener");
         window.opener.postMessage({
           type: 'SANSCOUNTS_AUTH_SUCCESS',
           payload: {
@@ -86,6 +97,7 @@ export function Authorize() {
       }
 
       // Fallback: Redirect back to the third-party app with the code
+      console.log("Authorize: Redirecting to:", redirectUri);
       const redirectUrl = new URL(redirectUri!);
       redirectUrl.searchParams.append('code', data.code);
       if (state) {
@@ -94,12 +106,14 @@ export function Authorize() {
       
       window.location.href = redirectUrl.toString();
     } catch (err) {
+      console.error("Authorize: Error in handleAllow:", err);
       setError('An error occurred during authorization.');
       setAuthorizing(false);
     }
   };
 
   const handleDeny = () => {
+    console.log("Authorize: handleDeny triggered");
     if (redirectUri) {
       const redirectUrl = new URL(redirectUri);
       redirectUrl.searchParams.append('error', 'access_denied');

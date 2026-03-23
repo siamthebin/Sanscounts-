@@ -151,12 +151,12 @@ async function startServer() {
           client = {
             clientId: appData.clientId,
             clientSecret: appData.clientSecret,
-            redirectUris: [],
-            name: appData.name
+            redirectUris: [appData.appUrl],
+            name: appData.appName
           };
         }
       } catch (error) {
-        console.error("Error fetching client from Firestore:", error);
+        console.error("Server: Error fetching client from Firestore:", error);
       }
     }
 
@@ -172,8 +172,25 @@ async function startServer() {
     }
 
     if (!client) {
+      console.log("Server: Client not found:", client_id);
       return res.status(400).json({ error: "invalid_client" });
     }
+
+    // Flexible redirect URI check for prototyping
+    // In production, this should be strictly enforced
+    const isDemoClient = client_id === "sansncar-client-id" || client_id === "sansneat-client-id";
+    const isLocalhost = redirect_uri?.includes("localhost") || redirect_uri?.includes("127.0.0.1");
+    const isRunApp = redirect_uri?.includes(".run.app");
+    
+    if (!isDemoClient && client.redirectUris.length > 0 && !client.redirectUris.includes(redirect_uri)) {
+      console.log("Server: Redirect URI mismatch:", { provided: redirect_uri, registered: client.redirectUris });
+      // For now, we'll just log it but allow it if it's a .run.app URL to avoid blocking users in this environment
+      if (!isRunApp && !isLocalhost) {
+        return res.status(400).json({ error: "invalid_redirect_uri" });
+      }
+    }
+
+    console.log("Server: Authorizing client:", { client_id, redirect_uri, user_id });
 
     // Generate auth code
     const code = uuidv4();
