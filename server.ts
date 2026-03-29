@@ -347,10 +347,10 @@ async function startServer() {
   // 4. UserInfo Endpoint (called by third-party backend with access token)
   app.get("/oauth/userinfo", async (req, res) => {
     const authHeader = req.headers.authorization;
-    const code = req.query.code as string;
+    const code = req.query.code;
 
     // Support fetching with code (for demo client convenience)
-    if (code) {
+    if (code && typeof code === 'string') {
       try {
         const authDoc = await getDoc(doc(db, "oauth_codes", code));
         if (!authDoc.exists()) {
