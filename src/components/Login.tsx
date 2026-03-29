@@ -217,8 +217,19 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
         expiresAt: Timestamp.fromDate(expiresAt)
       });
 
+      // Call the backend to send the email
+      const res = await fetch('/api/auth/send-otp-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: recoveryEmail.trim().toLowerCase(), code })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to send OTP email.');
+      }
+
       setVerificationDocId(docRef.id);
-      setError('OTP code has been sent to your Sansteo App.');
+      setError('OTP code has been sent to your email.');
       setTimeout(() => setView('forgot-password-otp'), 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP.');

@@ -6,6 +6,7 @@ import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
+import nodemailer from "nodemailer";
 
 // Load Firebase config manually to be more robust in ESM
 const firebaseConfigPath = path.resolve(process.cwd(), "firebase-applet-config.json");
@@ -14,6 +15,15 @@ const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+
+// Setup Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'sloudsan@gmail.com',
+    pass: process.env.GMAIL_APP_PASSWORD || ''
+  }
+});
 
 // Pre-registered clients (e.g., Sansneat, Sansncar)
 const clients = [
@@ -108,6 +118,42 @@ async function startServer() {
     } catch (error) {
       console.error("Error verifying OTP:", error);
       res.status(500).json({ error: "Failed to verify OTP" });
+    }
+  });
+
+  // Email OTP Endpoint
+  app.post("/api/auth/send-otp-email", async (req, res) => {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error: "Missing email or code" });
+
+    if (!process.env.GMAIL_APP_PASSWORD) {
+      console.warn("GMAIL_APP_PASSWORD is not set. Simulating email send.");
+      return res.json({ success: true, simulated: true });
+    }
+
+    try {
+      await transporter.sendMail({
+        from: '"Sanscounts Security" <sloudsan@gmail.com>',
+        to: email,
+        subject: 'Your Sanscounts Verification Code',
+        text: `Your verification code is: ${code}. It will expire in 10 minutes.`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <h2 style="color: #18181b; margin-bottom: 20px;">Sanscounts Verification</h2>
+            <p style="color: #52525b; font-size: 16px;">Your verification code is:</p>
+            <div style="background-color: #f4f4f5; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;">
+              <h1 style="font-size: 36px; letter-spacing: 8px; color: #0ea5e9; margin: 0;">${code}</h1>
+            </div>
+            <p style="color: #52525b; font-size: 14px;">This code will expire in 10 minutes.</p>
+            <p style="color: #a1a1aa; font-size: 12px; margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px;">If you didn't request this, please ignore this email.</p>
+          </div>
+        `
+      });
+      console.log(`[Email OTP] Sent to ${email}: ${code}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ error: "Failed to send email" });
     }
   });
 
