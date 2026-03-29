@@ -153,7 +153,7 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent | React.MouseEvent | React.PointerEvent) => {
     e.preventDefault();
     console.log("Login: handleLogin triggered");
     setLoading(true);
@@ -541,7 +541,7 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
                 <div>
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} placeholder="••••••••" autoFocus />
                 </div>
-                <button type="submit" disabled={loading} className={buttonClass}>
+                <button type="submit" onPointerDown={handleLogin} disabled={loading} className={buttonClass}>
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
                 <button type="button" onClick={() => { setError(''); setView('forgot-password-email'); }} className="mt-4 text-sm text-sky-500 hover:text-sky-400 font-medium">

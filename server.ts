@@ -28,6 +28,24 @@ const clients = [
     clientSecret: "sansncar-secret",
     redirectUris: ["http://localhost:3000/auth/callback", "https://sansncar.run.app/auth/callback"],
     name: "Sansncar"
+  },
+  {
+    clientId: "sanscounts-client-id",
+    clientSecret: "sanscounts-secret",
+    redirectUris: ["http://localhost:3000/auth/callback", "https://sanscounts.run.app/auth/callback"],
+    name: "Sanscounts"
+  },
+  {
+    clientId: "sansnsea-client-id",
+    clientSecret: "sansnsea-secret",
+    redirectUris: ["http://localhost:3000/auth/callback", "https://sansnsea.run.app/auth/callback"],
+    name: "Sansnsea"
+  },
+  {
+    clientId: "sansmap-client-id",
+    clientSecret: "sansmap-secret",
+    redirectUris: ["http://localhost:3000/auth/callback", "https://sansmap.run.app/auth/callback"],
+    name: "Sansmap"
   }
 ];
 
@@ -178,7 +196,12 @@ async function startServer() {
 
     // Flexible redirect URI check for prototyping
     // In production, this should be strictly enforced
-    const isDemoClient = client_id === "sansncar-client-id" || client_id === "sansneat-client-id";
+    const isDemoClient = 
+      client_id === "sansncar-client-id" || 
+      client_id === "sansneat-client-id" || 
+      client_id === "sanscounts-client-id" ||
+      client_id === "sansnsea-client-id" ||
+      client_id === "sansmap-client-id";
     const isLocalhost = redirect_uri?.includes("localhost") || redirect_uri?.includes("127.0.0.1");
     const isRunApp = redirect_uri?.includes(".run.app");
     

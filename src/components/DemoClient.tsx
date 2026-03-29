@@ -54,7 +54,7 @@ export function DemoClient() {
 
     if (isStandalone) {
       console.log("DemoClient: Standalone mode detected, using redirect flow");
-      window.location.href = authUrl;
+      navigate(authUrl);
       return;
     }
 
@@ -64,7 +64,7 @@ export function DemoClient() {
 
     if (!popup) {
       console.log("DemoClient: Popup blocked, falling back to redirect");
-      window.location.href = authUrl;
+      navigate(authUrl);
       return;
     }
 
@@ -123,8 +123,8 @@ export function DemoClient() {
               {/* App Selector */}
               <div className="mb-8 p-4 bg-zinc-50 rounded-2xl border border-zinc-200 text-left">
                 <label className="block text-sm font-bold text-zinc-700 mb-3">Select App to Test:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['sansncar', 'sansnsea', 'sansmap'].map(app => (
+                <div className="grid grid-cols-2 gap-2">
+                  {['sansncar', 'sanscounts', 'sansnsea', 'sansmap'].map(app => (
                     <button
                       key={app}
                       onClick={() => setTestApp(app)}

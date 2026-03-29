@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Login } from './Login';
 import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export function Authorize() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   
   const clientId = searchParams.get('client_id');
@@ -23,8 +24,7 @@ export function Authorize() {
       console.log("Authorize: fetchClient triggered for clientId:", clientId);
       if (!clientId || !redirectUri || responseType !== 'code') {
         console.error("Authorize: Invalid parameters:", { clientId, redirectUri, responseType });
-        setError('Invalid authorization request. Missing or invalid parameters.');
-        setLoading(false);
+        navigate('/', { replace: true });
         return;
       }
 
@@ -104,7 +104,11 @@ export function Authorize() {
         redirectUrl.searchParams.append('state', state);
       }
       
-      window.location.href = redirectUrl.toString();
+      if (redirectUrl.origin === window.location.origin) {
+        navigate(redirectUrl.pathname + redirectUrl.search);
+      } else {
+        window.location.href = redirectUrl.toString();
+      }
     } catch (err) {
       console.error("Authorize: Error in handleAllow:", err);
       setError('An error occurred during authorization.');
@@ -120,7 +124,11 @@ export function Authorize() {
       if (state) {
         redirectUrl.searchParams.append('state', state);
       }
-      window.location.href = redirectUrl.toString();
+      if (redirectUrl.origin === window.location.origin) {
+        navigate(redirectUrl.pathname + redirectUrl.search);
+      } else {
+        window.location.href = redirectUrl.toString();
+      }
     }
   };
 
