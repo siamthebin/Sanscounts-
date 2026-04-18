@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import { Email, Folder } from './types';
 import { Sidebar } from './components/Sidebar';
 import { EmailList } from './components/EmailList';
@@ -16,7 +17,7 @@ import { useEmails } from './hooks/useEmails';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function MailApp() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { emails, loading, sendEmail, markAsRead, toggleStar, moveToTrash, restoreFromTrash, deletePermanently } = useEmails(user?.email?.toLowerCase());
   const [currentFolder, setCurrentFolder] = useState<Folder>('inbox');
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -47,6 +48,27 @@ function MailApp() {
     };
     checkAndSendWelcome();
   }, [user, emails, loading, sendEmail]);
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-6 animate-in fade-in duration-1000">
+          <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-500/20 to-purple-500/20 animate-pulse" />
+            <Sparkles className="w-10 h-10 text-sky-400 relative z-10" />
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="text-zinc-100 font-bold text-xl tracking-tight">AI Studio</h2>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Login />;

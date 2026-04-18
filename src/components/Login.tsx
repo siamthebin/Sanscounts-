@@ -27,7 +27,9 @@ type ViewState =
   | 'login-password'
   | 'forgot-password-email'
   | 'forgot-password-otp'
-  | 'forgot-password-new-password';
+  | 'forgot-password-new-password'
+  | 'login-phone'
+  | 'login-phone-otp';
 
 import { 
   collection, 
@@ -43,8 +45,14 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { updatePassword } from 'firebase/auth';
+import { updatePassword, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { auth } from '../services/firebase';
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 const COUNTRY_CODES = [
   { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
@@ -82,6 +90,8 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [verificationDocId, setVerificationDocId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -310,6 +320,59 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
     }
   };
 
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {
+          // reCAPTCHA solved
+        }
+      });
+    }
+  };
+
+  const handleSendPhoneOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fullPhone = `${countryCode}${phoneNumber.replace(/^0+/, '')}`;
+    if (!phoneNumber) { setError('Please enter a phone number.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      setupRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const confirmation = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      setConfirmationResult(confirmation);
+      setView('login-phone-otp');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to send OTP. Please try again.');
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phoneOtp.length !== 6 || !confirmationResult) {
+      setError('Please enter a valid 6-digit code.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await confirmationResult.confirm(phoneOtp);
+      // AuthContext will handle the successful login state
+    } catch (err: any) {
+      setError('Invalid OTP code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const inputClass = "w-full bg-black border border-zinc-700 rounded-xl px-4 py-3 text-zinc-100 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors";
   const buttonClass = "w-full flex justify-center py-3.5 px-4 border border-transparent rounded-full shadow-sm text-base font-bold text-black bg-white hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 focus:ring-offset-black transition-colors mt-8 disabled:opacity-50";
 
@@ -370,9 +433,18 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
                     setError(''); 
                     setView('login-username'); 
                   }} 
-                  className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-zinc-700 rounded-full shadow-sm text-base font-bold text-sky-500 hover:bg-sky-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-black transition-colors cursor-pointer active:scale-95"
+                  className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-zinc-700 rounded-full shadow-sm text-base font-bold text-sky-500 hover:bg-sky-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-black transition-colors cursor-pointer active:scale-95 mb-4"
                 >
-                  Sign in
+                  Sign in with Sanscounts
+                </button>
+                <button 
+                  onClick={() => { 
+                    setError(''); 
+                    setView('login-phone'); 
+                  }} 
+                  className="w-full sm:w-[300px] flex justify-center py-3.5 px-4 border border-zinc-700 rounded-full shadow-sm text-base font-bold text-zinc-300 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-500 focus:ring-offset-black transition-colors cursor-pointer active:scale-95"
+                >
+                  Continue with Phone (SMS)
                 </button>
                 <p className="w-full sm:w-[300px] mt-4 text-xs text-zinc-500 leading-relaxed">
                   By signing in or creating an account, you agree to the Terms of Service and Privacy Policy for all Sans Services.
@@ -529,7 +601,7 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
               <button onClick={() => setView('main')} className="mb-8 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-2">
                 <ArrowLeft size={20} /><span>Back</span>
               </button>
-              <h2 className="text-3xl font-bold text-zinc-100 mb-8">Sign in</h2>
+              <h2 className="text-3xl font-bold text-zinc-100 mb-8">Sign in with Sanscounts</h2>
               <form onSubmit={submitLoginUsername} className="space-y-6 w-full sm:w-[300px]">
                 {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">{error}</div>}
                 <div>
@@ -632,6 +704,68 @@ export function Login({ startAtLogin = false }: { startAtLogin?: boolean }) {
                 </div>
                 <button type="submit" disabled={loading} className={buttonClass}>
                   {loading ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {view === 'login-phone' && (
+            <div className="animate-in slide-in-from-right-8 fade-in duration-300">
+              <button onClick={() => setView('main')} className="mb-8 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-2">
+                <ArrowLeft size={20} /><span>Back</span>
+              </button>
+              <h2 className="text-3xl font-bold text-zinc-100 mb-2">Phone Sign In</h2>
+              <p className="text-zinc-400 mb-8">We'll send you a free SMS with a 6-digit code.</p>
+              <form onSubmit={handleSendPhoneOtp} className="space-y-6 w-full sm:w-[300px]">
+                {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">{error}</div>}
+                <div className="flex gap-2">
+                  <select 
+                    value={countryCode} 
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="bg-black border border-zinc-700 rounded-xl px-2 py-3 text-zinc-100 focus:outline-none focus:border-sky-500 w-24"
+                  >
+                    {COUNTRY_CODES.map(c => (
+                      <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
+                    ))}
+                  </select>
+                  <input 
+                    type="tel" 
+                    value={phoneNumber} 
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))} 
+                    className={inputClass} 
+                    placeholder="Phone Number" 
+                    autoFocus 
+                  />
+                </div>
+                <div id="recaptcha-container"></div>
+                <button type="submit" disabled={loading} className={buttonClass}>
+                  {loading ? 'Sending...' : 'Send SMS OTP'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {view === 'login-phone-otp' && (
+            <div className="animate-in slide-in-from-right-8 fade-in duration-300">
+              <button onClick={() => setView('login-phone')} className="mb-8 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-2">
+                <ArrowLeft size={20} /><span>Back</span>
+              </button>
+              <h2 className="text-3xl font-bold text-zinc-100 mb-2">Enter OTP</h2>
+              <p className="text-zinc-400 mb-8">Enter the 6-digit code sent to {countryCode}{phoneNumber}</p>
+              <form onSubmit={handleVerifyPhoneOtp} className="space-y-6 w-full sm:w-[300px]">
+                {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">{error}</div>}
+                <div>
+                  <input 
+                    type="text" 
+                    value={phoneOtp} 
+                    onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                    className={`${inputClass} text-center text-2xl tracking-[0.5em] font-mono`} 
+                    placeholder="000000" 
+                    autoFocus 
+                  />
+                </div>
+                <button type="submit" disabled={loading} className={buttonClass}>
+                  {loading ? 'Verifying...' : 'Verify & Sign In'}
                 </button>
               </form>
             </div>
